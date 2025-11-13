@@ -1,0 +1,24 @@
+import os
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+load_dotenv()  # <-- ensure .env is loaded
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./health.db")
+print(f"[DB] Using: {DATABASE_URL}")   # <-- see this in your server logs
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
