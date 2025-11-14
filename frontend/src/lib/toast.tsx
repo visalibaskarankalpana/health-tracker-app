@@ -1,66 +1,70 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import { useEffect, useState } from 'react'
 
-type ToastVariant = "success" | "error" | "info";
-type Toast = { id: string; title: string; description?: string; variant: ToastVariant; };
+export type ToastType = 'success' | 'error' | 'info'
 
-type ToastContextType = {
-  show: (args: { title: string; description?: string; variant?: ToastVariant; durationMs?: number }) => void;
-};
+export type ToastMessage = {
+  id: number
+  text: string
+  type: ToastType
+}
 
-const ToastContext = createContext<ToastContextType | null>(null);
+type Listener = (toast: ToastMessage) => void
 
-export const useToast = () => {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error("useToast must be used inside <ToastProvider />");
-  return ctx;
-};
+let listeners: Listener[] = []
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [toasts, setToasts] = useState<Toast[]>([]);
+// Call this from anywhere to show a toast
+export function showToast(text: string, type: ToastType = 'info') {
+  const toast: ToastMessage = {
+    id: Date.now() + Math.random(),
+    text,
+    type,
+  }
+  listeners.forEach(listener => listener(toast))
+}
 
-  const show: ToastContextType["show"] = ({ title, description, variant = "success", durationMs = 3000 }) => {
-    const id = Math.random().toString(36).slice(2);
-    setToasts((t) => [...t, { id, title, description, variant }]);
-    window.setTimeout(() => {
-      setToasts((t) => t.filter((x) => x.id !== id));
-    }, durationMs);
-  };
+// Internal hook used by the host component
+export function useToastHost() {
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
 
-  const value = useMemo(() => ({ show }), []);
+  useEffect(() => {
+    const listener: Listener = toast => {
+      setToasts(current => [...current, toast])
+
+      // Auto-dismiss after 3.5s
+      setTimeout(() => {
+        setToasts(current => current.filter(t => t.id !== toast.id))
+      }, 3500)
+    }
+
+    listeners.push(listener)
+    return () => {
+      listeners = listeners.filter(l => l !== listener)
+    }
+  }, [])
+
+  return toasts
+}
+
+// Render this once near the top of the app
+export function ToastHost() {
+  const toasts = useToastHost()
 
   return (
-    <ToastContext.Provider value={value}>
-      {children}
-      <div className="fixed right-4 top-4 z-[9999] flex w-[360px] max-w-[92vw] flex-col gap-2">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={[
-              "rounded-xl shadow-lg border p-3 px-4 backdrop-blur bg-white/90",
-              t.variant === "success" ? "border-emerald-200" : "",
-              t.variant === "error" ? "border-rose-200" : "",
-              t.variant === "info" ? "border-sky-200" : "",
-            ].join(" ")}
-          >
-            <div className="flex items-start gap-3">
-              <span
-                className={[
-                  "mt-1 inline-flex h-2.5 w-2.5 rounded-full",
-                  t.variant === "success" ? "bg-emerald-500" : "",
-                  t.variant === "error" ? "bg-rose-500" : "",
-                  t.variant === "info" ? "bg-sky-500" : "",
-                ].join(" ")}
-              />
-              <div className="flex-1">
-                <div className="font-medium text-slate-800">{t.title}</div>
-                {t.description ? (
-                  <div className="text-sm text-slate-600">{t.description}</div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
-  );
-};
+    <div className="pointer-events-none fixed top-4 right-4 z-50 flex w-full max-w-sm flex-col gap-2">
+      {toasts.map(t => (
+        <div
+          key={t.id}
+          className={`pointer-events-auto rounded-xl px-4 py-3 text-sm text-white shadow-lg ${
+            t.type === 'success'
+              ? 'bg-emerald-500'
+              : t.type === 'error'
+              ? 'bg-rose-500'
+              : 'bg-slate-800'
+          }`}
+        >
+          {t.text}
+        </div>
+      ))}
+    </div>
+  )
+}

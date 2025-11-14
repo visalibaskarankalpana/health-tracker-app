@@ -1,7 +1,8 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import date, time
+from datetime import date, time as Time
 from typing import Optional
 
+from pydantic import BaseModel, ConfigDict, EmailStr
 # ---------- Doctor ----------
 class DoctorBase(BaseModel):
     first_name: str
@@ -65,6 +66,40 @@ class AppointmentBase(BaseModel):
 class AppointmentCreate(AppointmentBase):
     pass
 
-class AppointmentOut(AppointmentBase):
+from datetime import date, time
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr
+
+
+# ─── Appointment Schemas ──────────────────────────────────────────────────────
+
+# ----------------- Appointment Schemas ----------------- #
+
+class AppointmentCreate(BaseModel):
+    # Fields used by the Appointment DB model
+    date: date
+    # receive as string from JSON; we'll parse it in the router
+    time: Optional[str] = None
+    purpose: Optional[str] = None
+    doctor_id: Optional[int] = None
+    patient_id: Optional[int] = None
+
+    # Extra frontend-only fields (accepted but not stored)
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    department: Optional[str] = None
+
+
+class AppointmentOut(BaseModel):
     id: int
+    date: date
+    # here we expose the real DB type (Time)
+    time: Optional[Time] = None
+    purpose: Optional[str] = None
+    doctor_id: Optional[int] = None
+    patient_id: Optional[int] = None
+
+    # Pydantic v2: replacement for orm_mode = True
     model_config = ConfigDict(from_attributes=True)
