@@ -9,10 +9,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    env:
-      # Work around Rollup native binary issue in GitHub Actions
-      ROLLUP_SKIP_NODEJS_NATIVE: "true"
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,8 +20,8 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        # omit optional deps so npm doesn't choke on rollup native package
-        run: npm install --omit=optional
+        # Use ci if you want strict lockfile, or install if you prefer
+        run: npm ci
 
       - name: Build frontend
         working-directory: frontend
