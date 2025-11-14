@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 load_dotenv()  # <-- ensure .env is loaded
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./health.db")
-print(f"[DB] Using: {DATABASE_URL}")   # <-- see this in your server logs
+print(f"[DB] Using: {DATABASE_URL}")  
 
 engine = create_engine(
     DATABASE_URL,
