@@ -1,0 +1,77 @@
+version: 0.2
+
+# CodeBuild build specification for Python backend deployment
+# This file should be placed in the root of your GitHub repository
+
+phases:
+  pre_build:
+    commands:
+      - echo Build started on `date`
+      - echo Installing dependencies...
+      - pip3 install --upgrade pip
+      - cd backend
+      - pip3 install -r requirements.txt
+
+  build:
+    commands:
+      - echo Running tests if available...
+      # Add your test commands here if you have tests
+      # - python -m pytest tests/
+      - echo Build phase completed
+
+  post_build:
+    commands:
+      - echo Creating deployment package...
+      - cd $CODEBUILD_SRC_DIR
+      # Create a deployment package with backend code
+      - zip -r backend-deployment.zip backend/
+      - echo Uploading to S3...
+      - |
+        S3_BUCKET="${PROJECT_NAME}-${ENVIRONMENT}-app-deployments-${AWS_ACCOUNT_ID}"
+        aws s3 mb s3://$S3_BUCKET || true
+        aws s3 cp backend-deployment.zip s3://$S3_BUCKET/backend-latest.zip
+      - echo "Deploying to EC2 instances via SSM..."
+      - |
+        # Get instance IDs by tag
+        INSTANCE_IDS=$(aws ec2 describe-instances \
+          --filters "Name=tag:Name,Values=${EC2_TAG_NAME}-*" "Name=instance-state-name,Values=running" \
+          --query 'Reservations[*].Instances[*].InstanceId' \
+          --output text)
+        
+        if [ ! -z "$INSTANCE_IDS" ]; then
+          echo "Found instances: $INSTANCE_IDS"
+          
+          # Send deployment command via SSM
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids $INSTANCE_IDS \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "echo \"Downloading latest deployment...\"",
+              "cd /opt/healthcare-app",
+              "aws s3 cp s3://'"${S3_BUCKET}"'/backend-latest.zip /tmp/backend-latest.zip",
+              "unzip -o /tmp/backend-latest.zip",
+              "rm /tmp/backend-latest.zip",
+              "cd /opt/healthcare-app/backend",
+              "source .venv/bin/activate || python3 -m venv .venv && source .venv/bin/activate",
+              "pip install -r requirements.txt",
+              "sudo systemctl restart healthcare-backend",
+              "echo \"Deployment completed!\""
+            ]' \
+            --output text --query "Command.CommandId")
+          
+          echo "SSM Command ID: $COMMAND_ID"
+          echo "Waiting for deployment to complete..."
+          sleep 10
+        else
+          echo "No running instances found with tag ${EC2_TAG_NAME}"
+        fi
+      - echo Deployment completed successfully!
+
+artifacts:
+  files:
+    - '**/*'
+  name: BuildArtifact
+
+cache:
+  paths:
+    - '/root/.cache/pip/**/*'
