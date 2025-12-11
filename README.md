@@ -11,13 +11,7 @@ Health Tracker Application - Cloud Deployment
 ![EC2](https://img.shields.io/badge/EC2-FF9900)
 ![S3](https://img.shields.io/badge/S3-569A31)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF)
-![Status](https://img.shields.io/badge/Status-Operational-green)
-![HIPAA](https://img.shields.io/badge/HIPAA-4CAF50)
 ![License](https://img.shields.io/badge/License-MIT-green)
-
-Project Overview
-
-Health Tracker Application is a comprehensive healthcare management system deployed on AWS cloud infrastructure. This project implements a modern healthcare platform with telemedicine capabilities, patient data management, and secure cloud architecture, fully provisioned using Terraform and CI/CD pipelines.
 
 
 Project Overview
